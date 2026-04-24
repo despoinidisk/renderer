@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 /// Ergonomic constructors for layout trees. Use these from your own layout commands.
 pub mod build;
 
-/// Layout tree for the app shell, built with [`build`] helpers.
+/// `view`: `home` (main layout & forms), `library` (search / catalog), `settings` (preferences & window actions).
 #[tauri::command]
-pub fn get_ui_layout() -> Vec<UIComponent> {
-    build::demo_layout()
+pub fn get_ui_layout(view: String) -> Result<Vec<UIComponent>, String> {
+    build::layout_for_view(&view)
 }
 
 /// JSON: `actionType` key; values `SUBMIT_FORM`, `NAVIGATE`, `CLOSE_WINDOW`; data fields are camelCase.
@@ -84,12 +84,20 @@ pub fn handle_ui_action(
     payload: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     match action {
-        UIAction::SubmitForm { ref target_id } => Ok(serde_json::json!({
-            "ok": true,
-            "message": "Form submitted",
-            "targetId": target_id,
-            "payload": payload,
-        })),
+        UIAction::SubmitForm { ref target_id } => {
+            let message = match target_id.as_str() {
+                "library_import" => "Import queued",
+                "settings_save" => "Preferences saved",
+                "form_profile" => "Profile form received",
+                _ => "Form submitted",
+            };
+            Ok(serde_json::json!({
+                "ok": true,
+                "message": message,
+                "targetId": target_id,
+                "payload": payload,
+            }))
+        }
         UIAction::Navigate { path } => Ok(serde_json::json!({
             "ok": true,
             "message": "Navigation requested (stub)",

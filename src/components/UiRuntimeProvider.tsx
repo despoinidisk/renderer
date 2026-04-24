@@ -9,6 +9,7 @@ type ActionResult =
   | { ok: false; error: string }
 
 type UiRuntimeValue = {
+  view: string
   formValues: Record<string, string>
   setField: (id: string, value: string) => void
   lastResult: ActionResult | null
@@ -18,7 +19,14 @@ type UiRuntimeValue = {
 
 const UiRuntimeContext = React.createContext<UiRuntimeValue | null>(null)
 
-export function UiRuntimeProvider({ children }: { children: React.ReactNode }) {
+export function UiRuntimeProvider({
+  children,
+  view,
+}: {
+  children: React.ReactNode
+  /** Active toolbar tab; included in every `handle_ui_action` payload. */
+  view: string
+}) {
   const [formValues, setFormValues] = React.useState<Record<string, string>>({})
   const [lastResult, setLastResult] = React.useState<ActionResult | null>(null)
 
@@ -30,7 +38,7 @@ export function UiRuntimeProvider({ children }: { children: React.ReactNode }) {
 
   const runAction = React.useCallback(
     async (action: UIAction) => {
-      const payload = { fields: formValues }
+      const payload = { fields: formValues, view }
       try {
         const data = await invoke<unknown>("handle_ui_action", { action, payload })
         setLastResult({ ok: true, data })
@@ -38,18 +46,19 @@ export function UiRuntimeProvider({ children }: { children: React.ReactNode }) {
         setLastResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
       }
     },
-    [formValues]
+    [formValues, view]
   )
 
   const value = React.useMemo<UiRuntimeValue>(
     () => ({
+      view,
       formValues,
       setField,
       lastResult,
       clearLastResult,
       runAction,
     }),
-    [formValues, setField, lastResult, clearLastResult, runAction]
+    [view, formValues, setField, lastResult, clearLastResult, runAction]
   )
 
   return <UiRuntimeContext.Provider value={value}>{children}</UiRuntimeContext.Provider>
@@ -72,6 +81,6 @@ export function useUiRuntimeOptional() {
 
 /** Shorthand: action runner + result surface, without full form state. */
 export function useUiActions() {
-  const { runAction, lastResult, clearLastResult, formValues } = useUiRuntime()
-  return { runAction, lastResult, clearLastResult, formValues }
+  const { runAction, lastResult, clearLastResult, formValues, view } = useUiRuntime()
+  return { runAction, lastResult, clearLastResult, formValues, view }
 }

@@ -81,17 +81,17 @@ pub fn separator(id: &str) -> UIComponent {
     }
 }
 
-/// Rich nested layout: card with header copy, two-column form row, actions, nested settings vstack, badge, navigate stub.
-pub fn demo_layout() -> Vec<UIComponent> {
+/// **Layout** tab: profile card, two-column form, submit / navigate, status badge.
+pub fn home_layout() -> Vec<UIComponent> {
     use TextVariant::Title;
     use TextVariant::Body;
 
-    vec![card("root", vec![
+    vec![card("root_home", vec![
         vstack("title_block", 2, vec![
             text("card_title", "Settings & profile", Title),
             text(
                 "card_sub",
-                "Edit your details. Values are read from the React form store and sent to Rust on submit.",
+                "Edits are stored in the React form map and sent with the next action. Each tab has its own field ids.",
                 Body,
             ),
         ]),
@@ -127,11 +127,110 @@ pub fn demo_layout() -> Vec<UIComponent> {
         ]),
         separator("sep2"),
         vstack("settings_vstack", 2, vec![
-            text("settings_h", "Sub-panel: preferences", Title),
+            text("settings_h", "Sub-panel: status", Title),
             hstack("badge_row", 2, vec![
                 text("st_text", "Status", Body),
                 badge("st_badge", "Draft", "secondary"),
             ]),
         ]),
     ])]
+}
+
+/// **Library** tab: search, catalog copy, “import” submit, different actions than home.
+pub fn library_layout() -> Vec<UIComponent> {
+    use TextVariant::Title;
+    use TextVariant::Body;
+
+    vec![card("root_lib", vec![
+        vstack("lib_head", 2, vec![
+            text("lib_title", "Content library", Title),
+            text(
+                "lib_desc",
+                "Search the catalog. Import sends a different target_id to the same Rust handler as the Layout tab.",
+                Body,
+            ),
+        ]),
+        separator("lib_sep1"),
+        vstack("lib_search_block", 2, vec![
+            text("lib_lbl", "Filter", Body),
+            text_input("lib_query", "Search by title, tag, or id…"),
+        ]),
+        hstack("lib_chips", 2, vec![
+            badge("lib_b1", "Audio", "outline"),
+            badge("lib_b2", "Sheets", "secondary"),
+            badge("lib_b3", "3 items", "default"),
+        ]),
+        hstack("lib_actions", 2, vec![
+            button("lib_clear", "Clear", false, None),
+            button(
+                "lib_import",
+                "Queue import",
+                true,
+                Some(UIAction::SubmitForm {
+                    target_id: "library_import".to_string(),
+                }),
+            ),
+            button(
+                "lib_open",
+                "Open folder (stub)",
+                false,
+                Some(UIAction::Navigate {
+                    path: "/import".to_string(),
+                }),
+            ),
+        ]),
+    ])]
+}
+
+/// **Settings** tab: “API” fields, save, and close-window action (no navigate).
+pub fn settings_layout() -> Vec<UIComponent> {
+    use TextVariant::Title;
+    use TextVariant::Body;
+
+    vec![card("root_set", vec![
+        vstack("set_head", 2, vec![
+            text("set_title", "Preferences", Title),
+            text(
+                "set_desc",
+                "Values are still plain text fields. Save posts the form; Close window exercises a different action variant.",
+                Body,
+            ),
+        ]),
+        separator("set_sep1"),
+        vstack("set_fields", 2, vec![
+            text("set_api_lbl", "API base URL", Body),
+            text_input("set_api_url", "https://api.example.com"),
+            text("set_key_lbl", "Access token (local only)", Body),
+            text_input("set_token", "••••••••"),
+        ]),
+        hstack("set_row", 2, vec![
+            text("set_zone_lbl", "Region", Body),
+            text_input("set_region", "e.g. us-east-1"),
+        ]),
+        hstack("set_actions", 2, vec![
+            button(
+                "set_save",
+                "Save preferences",
+                true,
+                Some(UIAction::SubmitForm {
+                    target_id: "settings_save".to_string(),
+                }),
+            ),
+            button(
+                "set_close",
+                "Close window (stub)",
+                false,
+                Some(UIAction::CloseWindow),
+            ),
+        ]),
+    ])]
+}
+
+pub fn layout_for_view(view: &str) -> Result<Vec<UIComponent>, String> {
+    match view {
+        "home" => Ok(home_layout()),
+        "library" => Ok(library_layout()),
+        "settings" => Ok(settings_layout()),
+        other => Err(format!("unknown view: {other}")),
+    }
 }

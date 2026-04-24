@@ -6,7 +6,8 @@ This project ships a small **layout DSL** where Rust defines a tree of UI compon
 
 - **Single source of truth for structure**: The layout is built in Rust (see `tauri/src/ui/build.rs` and `get_ui_layout` in `tauri/src/ui/mod.rs`). You can version it, test it, and ship it without hand-writing parallel JSX for the same tree.
 - **End-user state in React**: Text fields and the last command result are held in `UiRuntimeProvider` (`src/components/UiRuntimeProvider.tsx`) so the tree stays a pure view over shared state.
-- **Actions over the wire**: Buttons carry a tagged `UIAction` object. Clicks call `handle_ui_action` with the current form map as `payload` (not a hand-written stub object).
+- **Actions over the wire**: Buttons carry a tagged `UIAction` object. Clicks call `handle_ui_action` with the current form map and **active tab id** as `payload` (see `UiRuntimeProvider`).
+- **Per-tab layouts**: The top toolbar switches between `home`, `library`, and `settings`. The client calls `get_ui_layout({ view })` for the active tab; each view is a different `Vec<UIComponent>` from `layout_for_view` in `tauri/src/ui/build.rs`. The form provider is remounted on tab change so field state does not leak between views.
 
 ## Wire format (JSON)
 
@@ -59,11 +60,11 @@ Also tagged, with `actionType` and **SCREAMING_SNAKE** values for the variant na
 
 ## End-to-end flow
 
-1. `get_ui_layout` (Tauri command) returns `Vec<UIComponent>`.
+1. `get_ui_layout` (Tauri command) takes `view: String` and returns `Result<Vec<UIComponent>, String>` (e.g. `home`, `library`, `settings`).
 2. The client stores that array and maps each node with `renderComponent` (`src/components/Renderer.tsx`).
 3. `TextInput` components read and write `formValues` in `UiRuntimeProvider` (keyed by `id`).
-4. A `Button` with an `action` calls `runAction`, which `invoke`s `handle_ui_action` with `{ action, payload }` and `payload = { fields: formValues }`.
-5. Rust returns a JSON value (`Result<serde_json::Value, String>`). Success is shown in the “Last action” panel on the home page; Tauri throws on `Err` and the provider records the error string.
+4. A `Button` with an `action` calls `runAction`, which `invoke`s `handle_ui_action` with `{ action, payload }` and `payload = { fields: formValues, view }` (active tab id).
+5. Rust returns a JSON value (`Result<serde_json::Value, String>`). Success is shown in the “Last action” panel; Tauri throws on `Err` and the provider records the error string.
 
 ```mermaid
 flowchart LR
@@ -86,7 +87,7 @@ flowchart LR
 
 ## Ergonomic layout building in Rust
 
-The `ui::build` module (`tauri/src/ui/build.rs`) exposes small helpers: `vstack`, `hstack`, `text`, `text_input`, `button`, `card`, `badge`, `separator`, and `container` (legacy). `demo_layout()` assembles a nested example used by `get_ui_layout()`. Prefer these helpers so layout code reads top-to-bottom instead of large enum literals.
+The `ui::build` module (`tauri/src/ui/build.rs`) exposes small helpers: `vstack`, `hstack`, `text`, `text_input`, `button`, `card`, `badge`, `separator`, and `container` (legacy), plus `home_layout`, `library_layout`, and `settings_layout` wired through `layout_for_view`. Prefer these helpers so layout code reads top-to-bottom instead of large enum literals.
 
 ## How to add a new component
 
